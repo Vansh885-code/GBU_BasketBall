@@ -1,0 +1,190 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "private_outputs": true,
+      "provenance": [],
+      "authorship_tag": "ABX9TyMtgXnrW/RXePnRD3Yk8rn5",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Vansh885-code/GBU_BasketBall/blob/main/Canteen%20waste%20prediction%20\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "from datetime import datetime, timedelta\n",
+        "\n",
+        "np.random.seed(42)\n",
+        "start_date = datetime(2025, 1, 1)\n",
+        "dates = [start_date + timedelta(days=i) for i in range(180)]\n",
+        "\n",
+        "data = []\n",
+        "for date in dates:\n",
+        "    day_of_week = date.weekday()\n",
+        "    month = date.month\n",
+        "    is_holiday = 1 if day_of_week == 6 else 0\n",
+        "    if np.random.rand() < 0.05:\n",
+        "        is_holiday = 1\n",
+        "    weather_choices = ['Sunny', 'Cloudy', 'Rainy']\n",
+        "    weather_probs = [0.5, 0.3, 0.2] if month in [3,4,5,6] else [0.3, 0.4, 0.3]\n",
+        "    weather = np.random.choice(weather_choices, p=weather_probs)\n",
+        "    if month in [12,1,2]: temp = np.random.randint(10, 20)\n",
+        "    elif month in [3,4,5]: temp = np.random.randint(25, 40)\n",
+        "    elif month in [6,7,8,9]: temp = np.random.randint(22, 32)\n",
+        "    else: temp = np.random.randint(15, 25)\n",
+        "    event = np.random.choice(['None', 'Exam', 'Fest'], p=[0.85, 0.1, 0.05])\n",
+        "    base_students = 450\n",
+        "    if is_holiday: base_students = 50\n",
+        "    if day_of_week == 4: base_students = 380\n",
+        "    if event == 'Exam': base_students = 500\n",
+        "    if event == 'Fest': base_students = 200\n",
+        "    total_students = int(base_students + np.random.randint(-50, 50))\n",
+        "    total_students = max(20, total_students)\n",
+        "    meals_prepared_kg = total_students * 0.4 + np.random.randint(10, 30)\n",
+        "    consumption_rate = 0.85\n",
+        "    if weather == 'Rainy': consumption_rate = 0.92\n",
+        "    if event == 'Exam': consumption_rate = 0.75\n",
+        "    if day_of_week == 4: consumption_rate = 0.78\n",
+        "    if is_holiday: consumption_rate = 0.70\n",
+        "    meals_consumed_kg = meals_prepared_kg * consumption_rate + np.random.normal(0, 5)\n",
+        "    meals_consumed_kg = min(meals_prepared_kg, meals_consumed_kg)\n",
+        "    waste_kg = meals_prepared_kg - meals_consumed_kg\n",
+        "    waste_kg = max(2, waste_kg)\n",
+        "    data.append([\n",
+        "        date.strftime('%Y-%m-%d'),\n",
+        "        day_of_week,\n",
+        "        is_holiday,\n",
+        "        weather,\n",
+        "        temp,\n",
+        "        event,\n",
+        "        total_students,\n",
+        "        round(meals_prepared_kg, 2),\n",
+        "        round(meals_consumed_kg, 2),\n",
+        "        round(waste_kg, 2)\n",
+        "    ])\n",
+        "\n",
+        "df = pd.DataFrame(data, columns=[\n",
+        "    'date', 'day_of_week', 'is_holiday', 'weather', 'temperature',\n",
+        "    'special_event', 'total_students', 'meals_prepared_kg',\n",
+        "    'meals_consumed_kg', 'waste_kg'\n",
+        "])\n",
+        "df.to_csv('canteen_waste.csv', index=False)\n",
+        "print(df.head())\n",
+        "print(df.shape)"
+      ],
+      "metadata": {
+        "id": "SanB3sMTaFwL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import pandas as pd\n",
+        "from sklearn.preprocessing import LabelEncoder\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.ensemble import RandomForestRegressor\n",
+        "from sklearn.metrics import mean_absolute_error, r2_score\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "df = pd.read_csv('canteen_waste.csv')\n",
+        "le = LabelEncoder()\n",
+        "df['weather'] = le.fit_transform(df['weather'])\n",
+        "df['special_event'] = le.fit_transform(df['special_event'])\n",
+        "df['date'] = pd.to_datetime(df['date'])\n",
+        "df['month'] = df['date'].dt.month\n",
+        "df = df.drop('date', axis=1)\n",
+        "print(df.head())"
+      ],
+      "metadata": {
+        "id": "beQCMkvhaTqj"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "X = df.drop('waste_kg', axis=1)\n",
+        "y = df['waste_kg']\n",
+        "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
+        "model = RandomForestRegressor(n_estimators=100, random_state=42)\n",
+        "model.fit(X_train, y_train)\n",
+        "pred = model.predict(X_test)\n",
+        "print(\"MAE:\", mean_absolute_error(y_test, pred))\n",
+        "print(\"R2 Score:\", r2_score(y_test, pred))"
+      ],
+      "metadata": {
+        "id": "WgJmA2HTaZsL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "importance = pd.DataFrame({\n",
+        "    'Feature': X.columns,\n",
+        "    'Importance': model.feature_importances_\n",
+        "}).sort_values('Importance', ascending=False)\n",
+        "plt.figure(figsize=(10,6))\n",
+        "plt.barh(importance['Feature'], importance['Importance'])\n",
+        "plt.xlabel('Importance')\n",
+        "plt.title('Feature Importance')\n",
+        "plt.show()"
+      ],
+      "metadata": {
+        "id": "Qy-wx0_Ladfp"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tomorrow = [[2, 0, 2, 22, 0, 400, 180, 160, 1]]\n",
+        "predicted_waste = model.predict(tomorrow)\n",
+        "print(\"Predicted Waste:\", round(predicted_waste[0], 2), \"kg\")"
+      ],
+      "metadata": {
+        "id": "7E-Jzne9ahCS"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from google.colab import drive\n",
+        "drive.mount('/content/drive')"
+      ],
+      "metadata": {
+        "id": "LsiMbU36a6Ft"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
